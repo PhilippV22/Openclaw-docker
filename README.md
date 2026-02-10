@@ -1,0 +1,62 @@
+# OpenClaw Docker Setup
+
+Dieses Repository baut ein lauffaehiges OpenClaw Docker-Image und startet es per Docker Compose.
+
+Standardmaessig wird OpenClaw aus dem offiziellen Repository gebaut:
+- Repo: `https://github.com/openclaw/openclaw.git`
+- Ref: `v2026.2.9` (Release vom 09.02.2026)
+
+## Voraussetzungen
+
+- Docker Engine oder Docker Desktop
+- Docker Compose v2 (`docker compose version`)
+
+## Schnellstart
+
+```bash
+chmod +x docker-setup.sh
+./docker-setup.sh
+```
+
+Das Skript macht automatisch:
+- Image bauen
+- Gateway-Token erzeugen (falls nicht gesetzt)
+- Onboarding starten
+- Gateway starten
+
+Danach ist OpenClaw in der Regel unter `http://127.0.0.1:18789/` erreichbar.
+
+## Wichtige Umgebungsvariablen
+
+- `OPENCLAW_REPO`: Quelle fuer OpenClaw
+- `OPENCLAW_REF`: Branch/Tag/Commit zum Bauen
+- `OPENCLAW_IMAGE`: Lokaler Image-Name
+- `OPENCLAW_DOCKER_APT_PACKAGES`: zusaetzliche apt-Pakete beim Build
+- `OPENCLAW_CONFIG_DIR`: Host-Pfad fuer `~/.openclaw`
+- `OPENCLAW_WORKSPACE_DIR`: Host-Pfad fuer Workspace
+- `OPENCLAW_GATEWAY_PORT`: Host-Port fuer Gateway (Default `18789`)
+- `OPENCLAW_BRIDGE_PORT`: Host-Port fuer Bridge (Default `18790`)
+- `OPENCLAW_GATEWAY_BIND`: `lan` oder `loopback`
+- `OPENCLAW_EXTRA_MOUNTS`: optionale zusaetzliche Bind-Mounts
+- `OPENCLAW_HOME_VOLUME`: optionales Docker Volume fuer `/home/node`
+
+## Manuell ohne Setup-Skript
+
+```bash
+docker build \
+  --build-arg OPENCLAW_REPO=https://github.com/openclaw/openclaw.git \
+  --build-arg OPENCLAW_REF=v2026.2.9 \
+  -t openclaw:local \
+  .
+
+docker compose run --rm openclaw-cli onboard --no-install-daemon
+docker compose up -d openclaw-gateway
+```
+
+## Nuetzliche Befehle
+
+```bash
+docker compose logs -f openclaw-gateway
+docker compose run --rm openclaw-cli dashboard --no-open
+docker compose exec openclaw-gateway node dist/index.js health --token "$OPENCLAW_GATEWAY_TOKEN"
+```
