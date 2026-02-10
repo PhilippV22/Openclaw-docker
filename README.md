@@ -80,3 +80,34 @@ Alternativ UID/GID in `.env` passend setzen:
 OPENCLAW_CONTAINER_UID=1000
 OPENCLAW_CONTAINER_GID=1000
 ```
+
+Wenn `docker-setup.sh` nach dem Onboarding nicht bis `==> Starting gateway` kommt,
+starte den Gateway manuell:
+
+```bash
+docker compose up -d openclaw-gateway
+docker compose logs -f openclaw-gateway
+```
+
+Wenn `unauthorized: gateway token mismatch` kommt:
+
+```bash
+source .env
+docker compose exec openclaw-gateway \
+  node -e "const fs=require('node:fs');const JSON5=require('json5');const c=JSON5.parse(fs.readFileSync('/home/node/.openclaw/openclaw.json','utf8'));console.log(c?.gateway?.auth?.token||'')"
+```
+
+Den ausgegebenen Token in `.env` als `OPENCLAW_GATEWAY_TOKEN` setzen und Gateway neu starten:
+
+```bash
+docker compose up -d --force-recreate openclaw-gateway
+```
+
+Fuer Cloudflare Tunnel muss der Ingress auf den lokalen Gateway zeigen:
+
+```yaml
+ingress:
+  - hostname: claw.example.com
+    service: http://127.0.0.1:18789
+  - service: http_status:404
+```

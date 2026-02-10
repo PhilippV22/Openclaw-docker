@@ -213,7 +213,35 @@ echo "  - Gateway token: $OPENCLAW_GATEWAY_TOKEN"
 echo "  - Tailscale exposure: Off"
 echo "  - Install Gateway daemon: No"
 echo ""
+set +e
 docker compose "${COMPOSE_ARGS[@]}" run --rm openclaw-cli onboard --no-install-daemon
+ONBOARD_EXIT_CODE=$?
+set -e
+
+if [[ "$ONBOARD_EXIT_CODE" -ne 0 ]]; then
+  echo ""
+  echo "Warning: onboarding exited with status ${ONBOARD_EXIT_CODE}. Continuing to start gateway."
+  echo "You can rerun onboarding later with:"
+  echo "  ${COMPOSE_HINT} run --rm openclaw-cli onboard --no-install-daemon"
+fi
+
+# Onboarding can generate/rotate gateway.auth.token in config.
+# Sync it back into OPENCLAW_GATEWAY_TOKEN so compose + CLI stay consistent.
+CONFIG_GATEWAY_TOKEN="$(
+  docker compose "${COMPOSE_ARGS[@]}" run --rm --entrypoint node openclaw-cli \
+    -e "const fs=require('node:fs');let token='';try{const JSON5=require('json5');const cfg=JSON5.parse(fs.readFileSync('/home/node/.openclaw/openclaw.json','utf8'));token=(cfg?.gateway?.auth?.token??'').toString().trim();}catch{}process.stdout.write(token);" \
+    2>/dev/null || true
+)"
+CONFIG_GATEWAY_TOKEN="${CONFIG_GATEWAY_TOKEN//$'\r'/}"
+CONFIG_GATEWAY_TOKEN="${CONFIG_GATEWAY_TOKEN//$'\n'/}"
+
+if [[ -n "$CONFIG_GATEWAY_TOKEN" && "$CONFIG_GATEWAY_TOKEN" != "$OPENCLAW_GATEWAY_TOKEN" ]]; then
+  OPENCLAW_GATEWAY_TOKEN="$CONFIG_GATEWAY_TOKEN"
+  export OPENCLAW_GATEWAY_TOKEN
+  upsert_env "$ENV_FILE" OPENCLAW_GATEWAY_TOKEN
+  echo ""
+  echo "==> Synced OPENCLAW_GATEWAY_TOKEN from onboarding config"
+fi
 
 echo ""
 echo "==> Provider setup (optional)"
