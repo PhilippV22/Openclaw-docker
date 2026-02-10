@@ -10,6 +10,7 @@ services:
   openclaw-gateway:
     build: *openclaw-build
     image: ${OPENCLAW_IMAGE:-openclaw:local}
+    user: "${OPENCLAW_CONTAINER_UID:-1000}:${OPENCLAW_CONTAINER_GID:-1000}"
     environment:
       HOME: /home/node
       TERM: xterm-256color
@@ -40,6 +41,7 @@ services:
   openclaw-cli:
     build: *openclaw-build
     image: ${OPENCLAW_IMAGE:-openclaw:local}
+    user: "${OPENCLAW_CONTAINER_UID:-1000}:${OPENCLAW_CONTAINER_GID:-1000}"
     environment:
       HOME: /home/node
       TERM: xterm-256color

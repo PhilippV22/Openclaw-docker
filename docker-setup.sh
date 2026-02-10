@@ -7,6 +7,8 @@ EXTRA_COMPOSE_FILE="$ROOT_DIR/docker-compose.extra.yml"
 IMAGE_NAME="${OPENCLAW_IMAGE:-openclaw:local}"
 EXTRA_MOUNTS="${OPENCLAW_EXTRA_MOUNTS:-}"
 HOME_VOLUME_NAME="${OPENCLAW_HOME_VOLUME:-}"
+OPENCLAW_CONTAINER_UID="${OPENCLAW_CONTAINER_UID:-1000}"
+OPENCLAW_CONTAINER_GID="${OPENCLAW_CONTAINER_GID:-1000}"
 
 require_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -26,13 +28,28 @@ OPENCLAW_WORKSPACE_DIR="${OPENCLAW_WORKSPACE_DIR:-$HOME/.openclaw/workspace}"
 OPENCLAW_REPO="${OPENCLAW_REPO:-https://github.com/openclaw/openclaw.git}"
 OPENCLAW_REF="${OPENCLAW_REF:-v2026.2.9}"
 
-mkdir -p "$OPENCLAW_CONFIG_DIR"
-mkdir -p "$OPENCLAW_WORKSPACE_DIR"
+if [[ ! "$OPENCLAW_CONTAINER_UID" =~ ^[0-9]+$ ]] || [[ ! "$OPENCLAW_CONTAINER_GID" =~ ^[0-9]+$ ]]; then
+  echo "OPENCLAW_CONTAINER_UID and OPENCLAW_CONTAINER_GID must be numeric." >&2
+  exit 1
+fi
+
+mkdir -p "$OPENCLAW_CONFIG_DIR" "$OPENCLAW_WORKSPACE_DIR"
+
+# Ensure host bind-mount folders are writable for the container user.
+if [[ "$(id -u)" -eq 0 ]]; then
+  chown -R "${OPENCLAW_CONTAINER_UID}:${OPENCLAW_CONTAINER_GID}" "$OPENCLAW_CONFIG_DIR"
+  chown -R "${OPENCLAW_CONTAINER_UID}:${OPENCLAW_CONTAINER_GID}" "$OPENCLAW_WORKSPACE_DIR"
+elif [[ ! -w "$OPENCLAW_CONFIG_DIR" || ! -w "$OPENCLAW_WORKSPACE_DIR" ]]; then
+  echo "Warning: bind mount path is not writable by current user." >&2
+  echo "Set OPENCLAW_CONTAINER_UID/OPENCLAW_CONTAINER_GID to matching host IDs or fix directory ownership." >&2
+fi
 
 export OPENCLAW_CONFIG_DIR
 export OPENCLAW_WORKSPACE_DIR
 export OPENCLAW_REPO
 export OPENCLAW_REF
+export OPENCLAW_CONTAINER_UID
+export OPENCLAW_CONTAINER_GID
 export OPENCLAW_GATEWAY_PORT="${OPENCLAW_GATEWAY_PORT:-18789}"
 export OPENCLAW_BRIDGE_PORT="${OPENCLAW_BRIDGE_PORT:-18790}"
 export OPENCLAW_GATEWAY_BIND="${OPENCLAW_GATEWAY_BIND:-lan}"
@@ -167,6 +184,8 @@ upsert_env "$ENV_FILE" \
   OPENCLAW_WORKSPACE_DIR \
   OPENCLAW_REPO \
   OPENCLAW_REF \
+  OPENCLAW_CONTAINER_UID \
+  OPENCLAW_CONTAINER_GID \
   OPENCLAW_GATEWAY_PORT \
   OPENCLAW_BRIDGE_PORT \
   OPENCLAW_GATEWAY_BIND \

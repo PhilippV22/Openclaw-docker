@@ -30,6 +30,8 @@ Danach ist OpenClaw in der Regel unter `http://127.0.0.1:18789/` erreichbar.
 
 - `OPENCLAW_REPO`: Quelle fuer OpenClaw
 - `OPENCLAW_REF`: Branch/Tag/Commit zum Bauen
+- `OPENCLAW_CONTAINER_UID`: UID des Users im Container (Default `1000`)
+- `OPENCLAW_CONTAINER_GID`: GID des Users im Container (Default `1000`)
 - `OPENCLAW_IMAGE`: Lokaler Image-Name
 - `OPENCLAW_DOCKER_APT_PACKAGES`: zusaetzliche apt-Pakete beim Build
 - `OPENCLAW_CONFIG_DIR`: Host-Pfad fuer `~/.openclaw`
@@ -59,4 +61,22 @@ docker compose up -d openclaw-gateway
 docker compose logs -f openclaw-gateway
 docker compose run --rm openclaw-cli dashboard --no-open
 docker compose exec openclaw-gateway node dist/index.js health --token "$OPENCLAW_GATEWAY_TOKEN"
+```
+
+## Troubleshooting
+
+Wenn beim Onboarding `EACCES: permission denied, open '/home/node/.openclaw/.env'` kommt,
+passen Host-Rechte und Container-UID nicht zusammen.
+
+Typischer Fix (wenn du als root arbeitest):
+
+```bash
+chown -R 1000:1000 /root/.openclaw
+```
+
+Alternativ UID/GID in `.env` passend setzen:
+
+```bash
+OPENCLAW_CONTAINER_UID=1000
+OPENCLAW_CONTAINER_GID=1000
 ```
